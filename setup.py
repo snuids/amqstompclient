@@ -5,9 +5,9 @@ setup(
   version = '0.1',
   description = 'Active MQ Python Client Using Stomp',
   author = 'snuids',
-  author_email = '',
-  url = 'https://github.com/snuids/amqstompclient', # use the URL to the github repo
-  download_url = 'https://github.com/snuids/amqstompclient/archive/0.1.tar.gz', # I'll explain this in a second
+  author_email = 'snuids@mannekentech.com',
+  url = 'https://github.com/snuids/amqstompclient', 
+  download_url = 'https://github.com/snuids/amqstompclient/archive/0.1.tar.gz',
   keywords = ['ActiveMQ', 'stomp', 'client'], # arbitrary keywords
   classifiers = [],
-)i
+)
