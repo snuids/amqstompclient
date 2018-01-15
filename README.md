@@ -11,7 +11,7 @@ import time
 logging.basicConfig(level=logging.INFO, format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger()
 
-server={"ip":"127.0.0.1","port":"61613","login":"admin","password":"ictcs-s4fab"}
+server={"ip":"127.0.0.1","port":"61613","login":"admin","password":"*****"}
 
 conn=amqstompclient.AMQClient(server
       , {"name":"TEST","version":"1.0.0","lifesign":"/topic/COUCOU"}
@@ -37,7 +37,7 @@ def callback(destination, message,headers):
 logging.basicConfig(level=logging.INFO, format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger()
 
-server={"ip":"127.0.0.1","port":"61613","login":"admin","password":"ictcs-s4fab"}
+server={"ip":"127.0.0.1","port":"61613","login":"admin","password":"*****"}
 
 conn=amqstompclient.AMQClient(server
         , {"name":"TEST","version":"1.0.0","lifesign":"/topic/HELLO"}
