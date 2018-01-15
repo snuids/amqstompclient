@@ -49,4 +49,4 @@ while True:
     conn.send_life_sign()
 ```
 
-![AMQC](https://raw.githubusercontent.com/snuids/amqstompclient/master/src/images/AMQC1.jpg)
+![AMQC](https://github.com/snuids/amqstompclient/raw/master/images/AMQC1.jpg)
