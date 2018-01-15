@@ -48,3 +48,5 @@ while True:
     time.sleep(5)
     conn.send_life_sign()
 ```
+
+![AMQC](https://raw.githubusercontent.com/snuids/amqstompclient/master/src/images/AMQC1.jpg)
