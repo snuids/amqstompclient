@@ -3,3 +3,4 @@ setup.cfg
 setup.py
 amqstompclient/__init__.py
 amqstompclient/amqstompclient.py
+amqstompclient/test_amqstompclient.py

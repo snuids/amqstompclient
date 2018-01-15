@@ -4,7 +4,7 @@ import json
 import sys
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.0"
+amqclientversion = "1.0.1"
 
 
 class AMQClient():
