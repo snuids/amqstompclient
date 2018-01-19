@@ -2,13 +2,13 @@ import stomp
 import logging
 import json
 import sys
+import datetime
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.0.1"
+amqclientversion = "1.0.2"
 
 
 class AMQClient():
-    
 
     def __init__(self, server, module, subscription, callback=None):
         logger.debug("#=-" * 20)
@@ -62,24 +62,30 @@ class AMQClient():
             logger.debug("#=- Send Module Life Sign.")
             if("lifesign" in self.module):
                 self.send_message(self.module["lifesign"], json.dumps({"error": "OK", "type": "lifesign", "module": self.module["name"], "version": self.module["version"],
-                                                                    "alive": 1, "errors": self.listener.globalerrors, "eventtype": "lifesign", "messages": self.listener.globalmessages,
-                                                                    "received": self.listener.received, "sent": self.sent,
-                                                                    "amqclientversion": amqclientversion
-                                                                    }))
+                                                                       "alive": 1, "errors": self.listener.globalerrors,
+                                                                       "internalerrors": self.listener.errors,
+                                                                       "heartbeaterrors": self.listener.heartbeaterrors,
+                                                                       "eventtype": "lifesign", "messages": self.listener.globalmessages,
+                                                                       "received": self.listener.received, "sent": self.sent,
+                                                                       "amqclientversion": amqclientversion,
+                                                                       "starttimets": datetime.datetime.now().timestamp(),
+                                                                       "starttime": str(datetime.datetime.now()),
+                                                                       }))
             else:
-                logger.error("Unable to send life sign. Target queue not defined in module parameters.")
+                logger.error(
+                    "Unable to send life sign. Target queue not defined in module parameters.")
         else:
             logger.error("#=- Unable to send life sign. No listener defined.")
 
     def send_message(self, destination, message, headers=None):
         logger.debug("#=- Send Message to " + destination +
-                    ". LEN=" + str(len(message)))
+                     ". LEN=" + str(len(message)))
         if destination not in self.sent:
             self.sent[destination] = 1
         else:
             self.sent[destination] += 1
 
-        self.conn.send(body=message, destination=destination,headers=headers)
+        self.conn.send(body=message, destination=destination, headers=headers)
 
     def heartbeat_timeout(self):
         for n in range(1, 31):
@@ -103,15 +109,18 @@ class AMQListener(stomp.ConnectionListener):
         self.internal_conn = amqconn
         self.callback = callback
         self.globalerrors = 0
+        self.errors = 0
+        self.heartbeaterrors = 0
         self.globalmessages = 0
         self.received = {}
 
-
     def on_error(self, headers, body):
         logger.error('#=- Received an error "%s"' % body)
+        self.errors += 1
 
     def on_heartbeat_timeout(self):
         logger.error("#=- HEART BEAT TIMEOUT ERROR")
+        self.heartbeaterrors += 1
         self.internal_conn.heartbeat_timeout()
         logger.error("#=- RESTARTING IT HEART BEAT TIMEOUT ERROR")
 
@@ -120,7 +129,7 @@ class AMQListener(stomp.ConnectionListener):
         if("destination" in headers):
             destination = headers["destination"]
         logger.debug("#=->>>> Message received (" + destination +
-                    ") PAYLOAD=" + str(len(message)))        
+                     ") PAYLOAD=" + str(len(message)))
 
         if destination not in self.received:
             self.received[destination] = 1

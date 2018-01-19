@@ -8,7 +8,7 @@ import time
 #python setup.py sdist
 #twine upload dist/*
 
-server={"ip":"127.0.0.1","port":"61613","login":"admin","password":"******"}
+server={"ip":"127.0.0.1","port":"61613","login":"admin","password":"*****"}
 
 logger=None
 
