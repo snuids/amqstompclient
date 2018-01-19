@@ -5,7 +5,7 @@ import sys
 import datetime
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.0.2"
+amqclientversion = "1.0.3"
 
 
 class AMQClient():
