@@ -5,7 +5,7 @@ import sys
 import datetime
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.0.3"
+amqclientversion = "1.0.5"
 
 
 class AMQClient():
@@ -21,6 +21,8 @@ class AMQClient():
         logger.debug("#=- Password:" + ("*" * len(server["password"])))
         logger.debug("#=- Subscription:" + str(subscription))
         logger.debug("#=-" * 20)
+
+        self.starttime=datetime.datetime.now()
 
         self.conn = None
         self.sent = {}
@@ -67,9 +69,9 @@ class AMQClient():
                                                                        "heartbeaterrors": self.listener.heartbeaterrors,
                                                                        "eventtype": "lifesign", "messages": self.listener.globalmessages,
                                                                        "received": self.listener.received, "sent": self.sent,
-                                                                       "amqclientversion": amqclientversion,
-                                                                       "starttimets": datetime.datetime.now().timestamp(),
-                                                                       "starttime": str(datetime.datetime.now()),
+                                                                       "amqclientversion": amqclientversion,                                                                       
+                                                                       "starttimets": self.starttime.timestamp(),
+                                                                       "starttime": str(self.starttime),                                                                       
                                                                        }))
             else:
                 logger.error(
