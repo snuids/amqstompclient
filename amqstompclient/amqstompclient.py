@@ -5,14 +5,14 @@ import sys
 import datetime
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.0.5"
+amqclientversion = "1.0.7"
 
 
 class AMQClient():
 
     def __init__(self, server, module, subscription, callback=None):
         logger.debug("#=-" * 20)
-        logger.debug("#=- Starting AMQ Connection")
+        logger.debug("#=- Starting AMQ Connection"+amqclientversion)
         logger.debug("#=-" * 20)
         logger.debug("#=- Module  :" + module["name"])
         logger.debug("#=- IP      :" + server["ip"])
@@ -30,6 +30,7 @@ class AMQClient():
         self.callback = callback
         self.server = server
         self.module = module
+        self.heartbeaterrors = 0
 
         self.create_connection()
 
@@ -66,7 +67,7 @@ class AMQClient():
                 self.send_message(self.module["lifesign"], json.dumps({"error": "OK", "type": "lifesign", "module": self.module["name"], "version": self.module["version"],
                                                                        "alive": 1, "errors": self.listener.globalerrors,
                                                                        "internalerrors": self.listener.errors,
-                                                                       "heartbeaterrors": self.listener.heartbeaterrors,
+                                                                       "heartbeaterrors": self.heartbeaterrors,
                                                                        "eventtype": "lifesign", "messages": self.listener.globalmessages,
                                                                        "received": self.listener.received, "sent": self.sent,
                                                                        "amqclientversion": amqclientversion,                                                                       
@@ -90,6 +91,7 @@ class AMQClient():
         self.conn.send(body=message, destination=destination, headers=headers)
 
     def heartbeat_timeout(self):
+        self.heartbeaterrors += 1
         for n in range(1, 31):
             try:
                 logger.debug("#=- Reconnecting: Attempt %d" % n)
@@ -111,8 +113,7 @@ class AMQListener(stomp.ConnectionListener):
         self.internal_conn = amqconn
         self.callback = callback
         self.globalerrors = 0
-        self.errors = 0
-        self.heartbeaterrors = 0
+        self.errors = 0        
         self.globalmessages = 0
         self.received = {}
 
@@ -121,10 +122,8 @@ class AMQListener(stomp.ConnectionListener):
         self.errors += 1
 
     def on_heartbeat_timeout(self):
-        logger.error("#=- HEART BEAT TIMEOUT ERROR")
-        self.heartbeaterrors += 1
+        logger.error("#=- HEART BEAT TIMEOUT ERROR")        
         self.internal_conn.heartbeat_timeout()
-        logger.error("#=- RESTARTING IT HEART BEAT TIMEOUT ERROR")
 
     def on_message(self, headers, message):
         destination = "NA"
