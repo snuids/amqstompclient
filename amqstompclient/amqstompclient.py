@@ -5,7 +5,7 @@ import sys
 import datetime
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.0.7"
+amqclientversion = "1.0.9"
 
 
 class AMQClient():
@@ -47,7 +47,10 @@ class AMQClient():
         self.conn.start()
         logger.debug("#=- Connection started.")
         self.conn.connect(self.server["login"],
-                          self.server["password"], wait=True, headers={"client-id": self.module["name"]})
+                          self.server["password"], 
+                          wait=True, 
+                          headers={"client-id": self.module["name"]},
+                          heart_beat_receive_scale=2.0)
         logger.debug("#=- Login passed.")
 
         curid = 1
