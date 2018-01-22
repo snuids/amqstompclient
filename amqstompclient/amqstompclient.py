@@ -5,14 +5,14 @@ import sys
 import datetime
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.0.9"
+amqclientversion = "1.1.0"
 
 
 class AMQClient():
 
     def __init__(self, server, module, subscription, callback=None):
         logger.debug("#=-" * 20)
-        logger.debug("#=- Starting AMQ Connection"+amqclientversion)
+        logger.debug("#=- Starting AMQ Connection" + amqclientversion)
         logger.debug("#=-" * 20)
         logger.debug("#=- Module  :" + module["name"])
         logger.debug("#=- IP      :" + server["ip"])
@@ -22,7 +22,7 @@ class AMQClient():
         logger.debug("#=- Subscription:" + str(subscription))
         logger.debug("#=-" * 20)
 
-        self.starttime=datetime.datetime.now()
+        self.starttime = datetime.datetime.now()
 
         self.conn = None
         self.sent = {}
@@ -31,15 +31,23 @@ class AMQClient():
         self.server = server
         self.module = module
         self.heartbeaterrors = 0
+        self.connections = 0
 
         self.create_connection()
 
     def disconnect(self):
+        logger.info("#=- Disconnecting...")
         self.conn.disconnect()
 
     def create_connection(self):
+        logger.info("#=- Creating connection.")
+        heartbeats = (10000, 20000)
+
+        if "heartbeats" in self.server:
+            heartbeats = self.server["heartbeats"]
+
         self.conn = stomp.Connection(
-            [(self.server["ip"], self.server["port"])], heartbeats=(10000, 20000))
+            [(self.server["ip"], self.server["port"])], heartbeats=heartbeats, heart_beat_receive_scale=1.1)
 
         self.listener = AMQListener(self, self.callback)
         self.conn.set_listener('simplelistener', self.listener)
@@ -47,12 +55,12 @@ class AMQClient():
         self.conn.start()
         logger.debug("#=- Connection started.")
         self.conn.connect(self.server["login"],
-                          self.server["password"], 
-                          wait=True, 
-                          headers={"client-id": self.module["name"]},
-                          heart_beat_receive_scale=2.0)
+                          self.server["password"],
+                          wait=True,
+                          headers={"client-id": self.module["name"]})
         logger.debug("#=- Login passed.")
 
+        self.connections+=1
         curid = 1
 
         if(len(self.subscription) > 0):
@@ -73,9 +81,10 @@ class AMQClient():
                                                                        "heartbeaterrors": self.heartbeaterrors,
                                                                        "eventtype": "lifesign", "messages": self.listener.globalmessages,
                                                                        "received": self.listener.received, "sent": self.sent,
-                                                                       "amqclientversion": amqclientversion,                                                                       
+                                                                       "amqclientversion": amqclientversion,
                                                                        "starttimets": self.starttime.timestamp(),
-                                                                       "starttime": str(self.starttime),                                                                       
+                                                                       "starttime": str(self.starttime),
+                                                                       "connections":self.connections
                                                                        }))
             else:
                 logger.error(
@@ -91,7 +100,16 @@ class AMQClient():
         else:
             self.sent[destination] += 1
 
-        self.conn.send(body=message, destination=destination, headers=headers)
+        try:
+            self.conn.send(
+                body=message, destination=destination, headers=headers)
+        except stomp.exception.NotConnectedException:
+            logger.error("#=- Not connected exception raised. Reconnecting.")
+            try:
+                self.disconnect()
+            except Exception:
+                logger.error("#=- Unable to disconnect.")
+            self.create_connection()
 
     def heartbeat_timeout(self):
         self.heartbeaterrors += 1
@@ -116,7 +134,7 @@ class AMQListener(stomp.ConnectionListener):
         self.internal_conn = amqconn
         self.callback = callback
         self.globalerrors = 0
-        self.errors = 0        
+        self.errors = 0
         self.globalmessages = 0
         self.received = {}
 
@@ -125,7 +143,7 @@ class AMQListener(stomp.ConnectionListener):
         self.errors += 1
 
     def on_heartbeat_timeout(self):
-        logger.error("#=- HEART BEAT TIMEOUT ERROR")        
+        logger.error("#=- HEART BEAT TIMEOUT ERROR")
         self.internal_conn.heartbeat_timeout()
 
     def on_message(self, headers, message):
