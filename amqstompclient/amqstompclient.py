@@ -5,7 +5,7 @@ import sys
 import datetime
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.1.0"
+amqclientversion = "1.1.1"
 
 
 class AMQClient():
@@ -14,13 +14,12 @@ class AMQClient():
         logger.debug("#=-" * 20)
         logger.debug("#=- Starting AMQ Connection" + amqclientversion)
         logger.debug("#=-" * 20)
-        logger.debug("#=- Module  :" + module["name"])
-        logger.debug("#=- IP      :" + server["ip"])
-        logger.debug("#=- Port    :" + str(server["port"]))
-        logger.debug("#=- Login   :" + server["login"])
-        logger.debug("#=- Password:" + ("*" * len(server["password"])))
-        logger.debug("#=- Subscription:" + str(subscription))
-        logger.debug("#=-" * 20)
+        logger.debug("#=- Module       :" + module["name"])
+        logger.debug("#=- IP           :" + server["ip"])
+        logger.debug("#=- Port         :" + str(server["port"]))
+        logger.debug("#=- Login        :" + server["login"])
+        logger.debug("#=- Password     :" + ("*" * len(server["password"])))
+        logger.debug("#=- Subscription :" + str(subscription))
 
         self.starttime = datetime.datetime.now()
 
@@ -32,6 +31,15 @@ class AMQClient():
         self.module = module
         self.heartbeaterrors = 0
         self.connections = 0
+        self.earlyack=False
+
+        if "earlyack" in server:
+            logger.info("Early ack set to true.")
+            self.earlyack=server["earlyack"]
+
+        logger.debug("#=- Subscription :" + str(subscription))
+        logger.debug("#=- Early Ack    :" + str(self.earlyack))
+        logger.debug("#=-" * 20)
 
         self.create_connection()
 
@@ -103,8 +111,11 @@ class AMQClient():
         try:
             self.conn.send(
                 body=message, destination=destination, headers=headers)
-        except stomp.exception.NotConnectedException:
-            logger.error("#=- Not connected exception raised. Reconnecting.")
+        except Exception:            
+            logger.error("#=- Error raised while sending. Reconnecting.")
+            err = sys.exc_info()
+            errstr = str(err[0]) + str(err[1]) + str(err[2])
+            logger.error("ERROR:" + errstr)
             try:
                 self.disconnect()
             except Exception:
@@ -147,6 +158,11 @@ class AMQListener(stomp.ConnectionListener):
         self.internal_conn.heartbeat_timeout()
 
     def on_message(self, headers, message):
+        if self.internal_conn.earlyack:
+            logger.debug("Early ack")
+            self.internal_conn.conn.ack(
+                headers["message-id"], headers["subscription"])
+
         destination = "NA"
         if("destination" in headers):
             destination = headers["destination"]
@@ -174,6 +190,7 @@ class AMQListener(stomp.ConnectionListener):
             errstr = str(err[0]) + str(err[1]) + str(err[2])
             logger.error("ERROR:" + errstr)
 
-        self.internal_conn.conn.ack(
-            headers["message-id"], headers["subscription"])
+        if not self.internal_conn.earlyack:
+            self.internal_conn.conn.ack(
+                headers["message-id"], headers["subscription"])
         logger.debug("#=-<<<< Message handled")
