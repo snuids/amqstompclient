@@ -5,7 +5,7 @@ import sys
 import datetime
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.1.1"
+amqclientversion = "1.1.2"
 
 
 class AMQClient():
@@ -133,6 +133,23 @@ class AMQClient():
             except exception.ConnectFailedException:
                 logger.error("#=- Reconnect attempt failed: %s" % e)
                 time.sleep(2)
+    
+    def general_error(self):
+        
+        try:
+            self.disconnect()
+        except:
+            logger.error("#=- Unable to disconnect")
+
+        for n in range(1, 31):
+            try:
+                logger.debug("#=- Reconnecting: Attempt %d" % n)
+                self.create_connection()
+
+                break
+            except exception.ConnectFailedException:
+                logger.error("#=- Reconnect attempt failed: %s" % e)
+                time.sleep(2)
 
 
 ##################################################################################
@@ -152,9 +169,10 @@ class AMQListener(stomp.ConnectionListener):
     def on_error(self, headers, body):
         logger.error('#=- Received an error "%s"' % body)
         self.errors += 1
+        self.internal_conn.general_error()
 
     def on_heartbeat_timeout(self):
-        logger.error("#=- HEART BEAT TIMEOUT ERROR")
+        logger.warn("#=- HEART BEAT TIMEOUT ERROR")
         self.internal_conn.heartbeat_timeout()
 
     def on_message(self, headers, message):
