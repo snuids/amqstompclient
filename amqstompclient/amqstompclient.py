@@ -3,9 +3,10 @@ import logging
 import json
 import sys
 import datetime
+import time
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.1.2"
+amqclientversion = "1.1.3"
 
 
 class AMQClient():
@@ -112,7 +113,10 @@ class AMQClient():
             self.conn.send(
                 body=message, destination=destination, headers=headers)
         except Exception:            
+            
             logger.error("#=- Error raised while sending. Reconnecting.")
+            logger.info("Sleeping 5 seconds and disconnects.")
+            time.sleep(5)
             err = sys.exc_info()
             errstr = str(err[0]) + str(err[1]) + str(err[2])
             logger.error("ERROR:" + errstr)
@@ -120,6 +124,8 @@ class AMQClient():
                 self.disconnect()
             except Exception:
                 logger.error("#=- Unable to disconnect.")
+            logger.info("Sleeping 5 seconds and reconnects.")
+            time.sleep(5)
             self.create_connection()
 
     def heartbeat_timeout(self):
