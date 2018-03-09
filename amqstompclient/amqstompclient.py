@@ -7,7 +7,7 @@ import time
 import os
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.1.4"
+amqclientversion = "1.1.5"
 
 
 class AMQClient():
@@ -144,7 +144,7 @@ class AMQClient():
     
     def general_error(self):        
         logger.error("#=- General Error. Exiting")
-        time.slepp(5)
+        time.sleep(5)
         os._exit(1)
 
                 
