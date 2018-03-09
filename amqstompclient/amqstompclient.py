@@ -7,12 +7,13 @@ import time
 import os
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.1.7"
+amqclientversion = "1.1.8"
 
 
 class AMQClient():
 
-    def __init__(self, server, module, subscription, callback=None):
+    def __init__(self, server, module, subscription, callback=None,heart_beat_receive_scale=2.0):
+        
         logger.debug("#=-" * 20)
         logger.debug("#=- Starting AMQ Connection" + amqclientversion)
         logger.debug("#=-" * 20)
@@ -22,8 +23,11 @@ class AMQClient():
         logger.debug("#=- Login        :" + server["login"])
         logger.debug("#=- Password     :" + ("*" * len(server["password"])))
         logger.debug("#=- Subscription :" + str(subscription))
+        logger.debug("#=- Beat         :" + str(heart_beat_receive_scale))
 
+        
         self.starttime = datetime.datetime.now()
+        self.heart_beat_receive_scale=heart_beat_receive_scale
 
         self.conn = None
         self.sent = {}
@@ -57,7 +61,7 @@ class AMQClient():
             heartbeats = self.server["heartbeats"]
 
         self.conn = stomp.Connection(
-            [(self.server["ip"], self.server["port"])], heartbeats=heartbeats, heart_beat_receive_scale=1.1)
+            [(self.server["ip"], self.server["port"])], heartbeats=heartbeats,heart_beat_receive_scale=self.heart_beat_receive_scale)
 
         self.listener = AMQListener(self, self.callback)
         self.conn.set_listener('simplelistener', self.listener)
