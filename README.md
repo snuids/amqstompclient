@@ -11,7 +11,7 @@ import time
 logging.basicConfig(level=logging.INFO, format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger()
 
-server={"ip":"127.0.0.1","port":"61613","login":"admin","password":"*****"}
+server={"ip":"127.0.0.1","port":"61613","login":"admin","password":"*****","heartbeats":(30000,30000)}
 
 conn=amqstompclient.AMQClient(server
       , {"name":"TEST","version":"1.0.0","lifesign":"/topic/COUCOU"}
@@ -37,7 +37,7 @@ def callback(destination, message,headers):
 logging.basicConfig(level=logging.INFO, format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger()
 
-server={"ip":"127.0.0.1","port":"61613","login":"admin","password":"*****"}
+server={"ip":"127.0.0.1","port":"61613","login":"admin","password":"*****","heartbeats":(30000,30000)}
 
 conn=amqstompclient.AMQClient(server
         , {"name":"TEST","version":"1.0.0","lifesign":"/topic/HELLO"}
@@ -50,3 +50,11 @@ while True:
 ```
 
 ![AMQC](https://github.com/snuids/amqstompclient/raw/master/images/AMQC1.jpg)
+
+
+## Early Ack
+
+It is possible to set earlyack to True in order to ack the message before calling the callback. This way, the message will not be rolled back if the callback fails.
+
+{"ip":activemq_address,"port":activemq_port,"login":activemq_user,
+            "password":activemq_password,"heartbeats":(30000,30000),"earlyack":True}
