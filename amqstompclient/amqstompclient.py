@@ -4,9 +4,10 @@ import json
 import sys
 import datetime
 import time
+import os
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.1.3"
+amqclientversion = "1.1.4"
 
 
 class AMQClient():
@@ -114,7 +115,7 @@ class AMQClient():
                 body=message, destination=destination, headers=headers)
         except Exception:            
             
-            logger.error("#=- Error raised while sending. Reconnecting.")
+            logger.error("#=- Error raised while sending. ")
             logger.info("Sleeping 5 seconds and disconnects.")
             time.sleep(5)
             err = sys.exc_info()
@@ -133,29 +134,20 @@ class AMQClient():
         for n in range(1, 31):
             try:
                 logger.debug("#=- Reconnecting: Attempt %d" % n)
+                time.sleep(5)
                 self.create_connection()
 
                 break
-            except exception.ConnectFailedException:
+            except Exception as e:
                 logger.error("#=- Reconnect attempt failed: %s" % e)
-                time.sleep(2)
+                
     
-    def general_error(self):
-        
-        try:
-            self.disconnect()
-        except:
-            logger.error("#=- Unable to disconnect")
+    def general_error(self):        
+        logger.error("#=- General Error. Exiting")
+        time.slepp(5)
+        os._exit(1)
 
-        for n in range(1, 31):
-            try:
-                logger.debug("#=- Reconnecting: Attempt %d" % n)
-                self.create_connection()
-
-                break
-            except exception.ConnectFailedException:
-                logger.error("#=- Reconnect attempt failed: %s" % e)
-                time.sleep(2)
+                
 
 
 ##################################################################################
