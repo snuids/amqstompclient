@@ -7,7 +7,7 @@ import time
 import os
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.1.8"
+amqclientversion = "1.1.9"
 
 
 class AMQClient():
@@ -85,11 +85,11 @@ class AMQClient():
                                         "activemq.prefetchSize": 1})
                     curid += 1
 
-    def send_life_sign(self):
+    def send_life_sign(self,variables=None):
         if(self.listener != None):
             logger.debug("#=- Send Module Life Sign.")
             if("lifesign" in self.module):
-                self.send_message(self.module["lifesign"], json.dumps({"error": "OK", "type": "lifesign", "module": self.module["name"], "version": self.module["version"],
+                lifesignstruct={"error": "OK", "type": "lifesign", "module": self.module["name"], "version": self.module["version"],
                                                                        "alive": 1, "errors": self.listener.globalerrors,
                                                                        "internalerrors": self.listener.errors,
                                                                        "heartbeaterrors": self.heartbeaterrors,
@@ -99,7 +99,13 @@ class AMQClient():
                                                                        "starttimets": self.starttime.timestamp(),
                                                                        "starttime": str(self.starttime),
                                                                        "connections":self.connections
-                                                                       }))
+                                                                       }
+
+                if variables !=None:
+                    for key in variables:
+                        lifesignstruct[key]=variables[key]
+
+                self.send_message(self.module["lifesign"], json.dumps(lifesignstruct))
             else:
                 logger.error(
                     "Unable to send life sign. Target queue not defined in module parameters.")

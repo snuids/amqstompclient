@@ -8,7 +8,7 @@ import time
 #python setup.py sdist
 #twine upload dist/*
 
-server={"ip":"127.0.0.1","port":"61613","login":"admin","password":"*****"}
+server={"ip":"localhost","port":"61613","login":"admin","password":"*******"}
 
 logger=None
 
@@ -269,8 +269,10 @@ class TestClient(unittest.TestCase):
                 conn1.send_message("/topic/TTEST1","TEST_TOBOTH")
                 conn2.send_message("/topic/TTEST1","TEST_TOBOTH")
 
-            logger.info("==> Waiting for reception")
-            time.sleep(2)
+            
+            for i in range(0,6):
+                logger.info("==> Waiting for reception")
+                time.sleep(1)
 
             self.assertEqual(conn1.listener.received["/queue/QTEST1"], 5)
             self.assertEqual(conn2.listener.received["/queue/QTEST2"], 10)
