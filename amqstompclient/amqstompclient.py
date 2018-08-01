@@ -7,7 +7,7 @@ import time
 import os
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.1.9"
+amqclientversion = "1.1.10"
 
 
 class AMQClient():
@@ -47,7 +47,7 @@ class AMQClient():
         logger.debug("#=- Early Ack    :" + str(self.earlyack))
         logger.debug("#=-" * 20)
 
-        self.create_connection()
+        self.create_connection(self)
 
     def disconnect(self):
         logger.info("#=- Disconnecting...")
