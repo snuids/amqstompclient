@@ -7,7 +7,7 @@ import time
 import os
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.1.10"
+amqclientversion = "1.1.11"
 
 
 class AMQClient():
@@ -105,7 +105,7 @@ class AMQClient():
                     for key in variables:
                         lifesignstruct[key]=variables[key]
 
-                self.send_message(self.module["lifesign"], json.dumps(lifesignstruct))
+                self.send_message(self,self.module["lifesign"], json.dumps(lifesignstruct))
             else:
                 logger.error(
                     "Unable to send life sign. Target queue not defined in module parameters.")
