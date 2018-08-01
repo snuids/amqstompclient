@@ -7,7 +7,7 @@ import time
 import os
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.1.11"
+amqclientversion = "1.1.12"
 
 
 class AMQClient():
@@ -47,7 +47,10 @@ class AMQClient():
         logger.debug("#=- Early Ack    :" + str(self.earlyack))
         logger.debug("#=-" * 20)
 
-        self.create_connection(self)
+        try:
+            self.create_connection(self)
+        except:
+            self.create_connection()
 
     def disconnect(self):
         logger.info("#=- Disconnecting...")
@@ -105,7 +108,10 @@ class AMQClient():
                     for key in variables:
                         lifesignstruct[key]=variables[key]
 
-                self.send_message(self,self.module["lifesign"], json.dumps(lifesignstruct))
+                try:
+                    self.send_message(self,self.module["lifesign"], json.dumps(lifesignstruct))
+                except:
+                    self.send_message(self.module["lifesign"], json.dumps(lifesignstruct))
             else:
                 logger.error(
                     "Unable to send life sign. Target queue not defined in module parameters.")
@@ -137,7 +143,11 @@ class AMQClient():
                 logger.error("#=- Unable to disconnect.")
             logger.info("Sleeping 5 seconds and reconnects.")
             time.sleep(5)
-            self.create_connection()
+            try:
+                self.create_connection(self)
+            except:
+                self.create_connection()
+
 
     def heartbeat_timeout(self):
         self.heartbeaterrors += 1
@@ -145,7 +155,10 @@ class AMQClient():
             try:
                 logger.debug("#=- Reconnecting: Attempt %d" % n)
                 time.sleep(5)
-                self.create_connection()
+                try:
+                    self.create_connection(self)
+                except:
+                    self.create_connection()
 
                 break
             except Exception as e:
