@@ -102,7 +102,7 @@ class AMQClient():
         
         self.starttime = datetime.datetime.now()
         self.heart_beat_receive_scale=heart_beat_receive_scale
-        self.listener = listener_class(self, self.callback)
+        self.listener_class = listener_class
 
         self.conn = None
         self.sent = {}
@@ -141,6 +141,7 @@ class AMQClient():
         self.conn = stomp.Connection(
             [(self.server["ip"], self.server["port"])], heartbeats=heartbeats,heart_beat_receive_scale=self.heart_beat_receive_scale)
 
+        self.listener = self.listener_class(self, self.callback)
         self.conn.set_listener('simplelistener', self.listener)
         logger.debug("#=- Starting connection...")
         self.conn.start()
@@ -222,21 +223,17 @@ class AMQClient():
             except:
                 self.create_connection()
 
-
     def heartbeat_timeout(self):
         self.heartbeaterrors += 1
         self.reconnect_and_listen()
-
 
     def general_error(self):        
         logger.error("#=- General Error. Exiting")
         time.sleep(5)
         os._exit(1)
 
-
     def listener_disconnect(self):
         self.reconnect_and_listen()
-
 
     def reconnect_and_listen(self):
         for n in range(1, 31):
