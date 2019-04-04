@@ -10,9 +10,83 @@ logger = logging.getLogger(__name__)
 amqclientversion = "1.1.12"
 
 
+##################################################################################
+# AMQ Listener
+##################################################################################
+
+class AMQListener(stomp.ConnectionListener):
+
+    def __init__(self, amqconn,  callback):
+        self.internal_conn = amqconn
+        self.callback = callback
+        self.globalerrors = 0
+        self.errors = 0
+        self.globalmessages = 0
+        self.received = {}
+
+    def on_error(self, headers, body):
+        logger.error('#=- Received an error "%s"' % body)
+        self.errors += 1
+        self.internal_conn.general_error()
+
+    def on_heartbeat_timeout(self):
+        logger.warn("#=- HEART BEAT TIMEOUT ERROR")
+        self.internal_conn.heartbeat_timeout()
+
+    def on_message(self, headers, message):
+        if self.internal_conn.earlyack:
+            logger.debug("Early ack")
+            self.internal_conn.conn.ack(
+                headers["message-id"], headers["subscription"])
+
+        destination = "NA"
+        if("destination" in headers):
+            destination = headers["destination"]
+        logger.debug("#=->>>> Message received (" + destination +
+                     ") PAYLOAD=" + str(len(message)))
+
+        if destination not in self.received:
+            self.received[destination] = 1
+        else:
+            self.received[destination] += 1
+
+        self.globalmessages += 1
+
+        try:
+            if self.callback != None:
+                self.callback(destination, message, headers)
+            else:
+                logger.warning("#=- No call back defined")
+
+        except Exception:
+            self.globalerrors += 1
+
+            logger.error("ERROR:", exc_info=True)
+            err = sys.exc_info()
+            errstr = str(err[0]) + str(err[1]) + str(err[2])
+            logger.error("ERROR:" + errstr)
+
+        if not self.internal_conn.earlyack:
+            self.internal_conn.conn.ack(
+                headers["message-id"], headers["subscription"])
+        logger.debug("#=-<<<< Message handled")
+
+
+##################################################################################
+# AMQ Listener which gracefully reconnects on disconnect
+##################################################################################
+
+class AMQReconnectListener(AMQListener):
+
+    def on_disconnected(self):
+        logger.warn("#=- LISTENER DISCONNECTED ERROR")
+        self.internal_conn.listener_disconnect()
+
+
 class AMQClient():
 
-    def __init__(self, server, module, subscription, callback=None,heart_beat_receive_scale=2.0):
+    def __init__(self, server, module, subscription, callback=None,heart_beat_receive_scale=2.0,
+                 listener_class=AMQListener):
         
         logger.debug("#=-" * 20)
         logger.debug("#=- Starting AMQ Connection" + amqclientversion)
@@ -24,10 +98,11 @@ class AMQClient():
         logger.debug("#=- Password     :" + ("*" * len(server["password"])))
         logger.debug("#=- Subscription :" + str(subscription))
         logger.debug("#=- Beat         :" + str(heart_beat_receive_scale))
-
+        logger.debug("#=- Listener     :" + str(listener_class))
         
         self.starttime = datetime.datetime.now()
         self.heart_beat_receive_scale=heart_beat_receive_scale
+        self.listener_class = listener_class
 
         self.conn = None
         self.sent = {}
@@ -66,7 +141,7 @@ class AMQClient():
         self.conn = stomp.Connection(
             [(self.server["ip"], self.server["port"])], heartbeats=heartbeats,heart_beat_receive_scale=self.heart_beat_receive_scale)
 
-        self.listener = AMQListener(self, self.callback)
+        self.listener = self.listener_class(self, self.callback)
         self.conn.set_listener('simplelistener', self.listener)
         logger.debug("#=- Starting connection...")
         self.conn.start()
@@ -148,9 +223,19 @@ class AMQClient():
             except:
                 self.create_connection()
 
-
     def heartbeat_timeout(self):
         self.heartbeaterrors += 1
+        self.reconnect_and_listen()
+
+    def general_error(self):        
+        logger.error("#=- General Error. Exiting")
+        time.sleep(5)
+        os._exit(1)
+
+    def listener_disconnect(self):
+        self.reconnect_and_listen()
+
+    def reconnect_and_listen(self):
         for n in range(1, 31):
             try:
                 logger.debug("#=- Reconnecting: Attempt %d" % n)
@@ -163,73 +248,3 @@ class AMQClient():
                 break
             except Exception as e:
                 logger.error("#=- Reconnect attempt failed: %s" % e)
-                
-    
-    def general_error(self):        
-        logger.error("#=- General Error. Exiting")
-        time.sleep(5)
-        os._exit(1)
-
-                
-
-
-##################################################################################
-# AMQ Listener
-##################################################################################
-
-class AMQListener(stomp.ConnectionListener):
-
-    def __init__(self, amqconn,  callback):
-        self.internal_conn = amqconn
-        self.callback = callback
-        self.globalerrors = 0
-        self.errors = 0
-        self.globalmessages = 0
-        self.received = {}
-
-    def on_error(self, headers, body):
-        logger.error('#=- Received an error "%s"' % body)
-        self.errors += 1
-        self.internal_conn.general_error()
-
-    def on_heartbeat_timeout(self):
-        logger.warn("#=- HEART BEAT TIMEOUT ERROR")
-        self.internal_conn.heartbeat_timeout()
-
-    def on_message(self, headers, message):
-        if self.internal_conn.earlyack:
-            logger.debug("Early ack")
-            self.internal_conn.conn.ack(
-                headers["message-id"], headers["subscription"])
-
-        destination = "NA"
-        if("destination" in headers):
-            destination = headers["destination"]
-        logger.debug("#=->>>> Message received (" + destination +
-                     ") PAYLOAD=" + str(len(message)))
-
-        if destination not in self.received:
-            self.received[destination] = 1
-        else:
-            self.received[destination] += 1
-
-        self.globalmessages += 1
-
-        try:
-            if self.callback != None:
-                self.callback(destination, message, headers)
-            else:
-                logger.warning("#=- No call back defined")
-
-        except Exception:
-            self.globalerrors += 1
-
-            logger.error("ERROR:", exc_info=True)
-            err = sys.exc_info()
-            errstr = str(err[0]) + str(err[1]) + str(err[2])
-            logger.error("ERROR:" + errstr)
-
-        if not self.internal_conn.earlyack:
-            self.internal_conn.conn.ack(
-                headers["message-id"], headers["subscription"])
-        logger.debug("#=-<<<< Message handled")
