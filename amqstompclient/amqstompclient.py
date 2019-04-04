@@ -7,7 +7,7 @@ import time
 import os
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.1.12"
+amqclientversion = "1.1.13"
 
 
 ##################################################################################
