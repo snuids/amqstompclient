@@ -167,17 +167,7 @@ class AMQClient():
         if(self.listener != None):
             logger.debug("#=- Send Module Life Sign.")
             if("lifesign" in self.module):
-                lifesignstruct={"error": "OK", "type": "lifesign", "module": self.module["name"], "version": self.module["version"],
-                                                                       "alive": 1, "errors": self.listener.globalerrors,
-                                                                       "internalerrors": self.listener.errors,
-                                                                       "heartbeaterrors": self.heartbeaterrors,
-                                                                       "eventtype": "lifesign", "messages": self.listener.globalmessages,
-                                                                       "received": self.listener.received, "sent": self.sent,
-                                                                       "amqclientversion": amqclientversion,
-                                                                       "starttimets": self.starttime.timestamp(),
-                                                                       "starttime": str(self.starttime),
-                                                                       "connections":self.connections
-                                                                       }
+                lifesignstruct = self.generate_life_sign()
 
                 if variables !=None:
                     for key in variables:
@@ -192,6 +182,26 @@ class AMQClient():
                     "Unable to send life sign. Target queue not defined in module parameters.")
         else:
             logger.error("#=- Unable to send life sign. No listener defined.")
+
+    def generate_life_sign(self):
+        return {
+            "error": "OK",
+            "type": "lifesign",
+            "eventtype": "lifesign",
+            "module": self.module["name"],
+            "version": self.module["version"],
+            "alive": 1,
+            "errors": self.listener.globalerrors,
+            "internalerrors": self.listener.errors,
+            "heartbeaterrors": self.heartbeaterrors,
+            "messages": self.listener.globalmessages,
+            "received": self.listener.received,
+            "sent": self.sent,
+            "amqclientversion": amqclientversion,
+            "starttimets": self.starttime.timestamp(),
+            "starttime": str(self.starttime),
+            "connections": self.connections
+        }
 
     def send_message(self, destination, message, headers=None):
         logger.debug("#=- Send Message to " + destination +
