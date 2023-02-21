@@ -7,7 +7,7 @@ import time
 import os
 
 logger = logging.getLogger(__name__)
-amqclientversion = "1.1.14"
+amqclientversion = "1.2.0"
 
 
 ##################################################################################
@@ -144,7 +144,7 @@ class AMQClient():
         self.listener = self.listener_class(self, self.callback)
         self.conn.set_listener('simplelistener', self.listener)
         logger.debug("#=- Starting connection...")
-        self.conn.start()
+#        self.conn.start()
         logger.debug("#=- Connection started.")
         self.conn.connect(self.server["login"],
                           self.server["password"],
