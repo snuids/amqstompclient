@@ -102,3 +102,5 @@ ENV/
 .pypirc
 .vscode/settings.json
 amqstompclient/test_amqstompclient copy.py
+__azurite_db_blob_extent__.json
+__azurite_db_blob__.json

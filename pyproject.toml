@@ -1,12 +1,12 @@
 # pyproject.toml
 
 [build-system]
-requires      = ["setuptools>=61.0.0", "wheel"]
+requires = ["setuptools >= 77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "amqstompclient"
-version = "2.0.2"
+version = "2.0.3"
 description = "ActiveMQ STOMP Client for Python"
 readme = "README.md"
 authors = [{ name = "snuids" }]
