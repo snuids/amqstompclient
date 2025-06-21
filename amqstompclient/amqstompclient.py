@@ -9,7 +9,7 @@ import os
 import stomp.utils
 
 logger = logging.getLogger(__name__)
-amqclientversion = "2.0.0"
+amqclientversion = "2.0.2"
 
 
 ##################################################################################

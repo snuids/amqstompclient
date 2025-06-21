@@ -1,6 +1,22 @@
+# pyproject.toml
+
 [build-system]
-requires = ["setuptools"]
+requires      = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "amqstompclient"
+version = "2.0.2"
+description = "ActiveMQ STOMP Client for Python"
+readme = "README.md"
+authors = [{ name = "snuids" }]
+license-files = ["LICENSE"]
+keywords = ['ActiveMQ', 'stomp', 'client']
+dependencies = [
+    "stomp.py >= 8.2.0"
+]
+requires-python = ">=3.9"
 
 
+[project.urls]
+Homepage = "https://github.com/snuids/amqstompclient"
