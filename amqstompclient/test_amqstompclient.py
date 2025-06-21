@@ -8,6 +8,7 @@ import time
 #python setup.py sdist
 #twine upload dist/*
 
+
 server={"ip":"localhost","port":"61613","login":"admin","password":"*******"}
 
 logger=None
@@ -153,7 +154,7 @@ class TestClient(unittest.TestCase):
                 conn.send_message("/topic/TTEST2","MYMESSAGE_"+str(i))
             
             logger.info("==> Waiting for reception")
-            time.sleep(2)
+            time.sleep(4)
 
             logger.info(conn.listener.received)
             self.assertEqual("/queue/QTEST1" in conn.listener.received, True)
@@ -259,6 +260,8 @@ class TestClient(unittest.TestCase):
             logger.info("==> test_multiclient")
             conn1=amqstompclient.AMQClient(server, {"name":"TEST1","version":"1.0.0"},["/queue/QTEST1","/topic/TTEST1"])        
             conn2=amqstompclient.AMQClient(server, {"name":"TEST2","version":"1.0.0"},["/queue/QTEST2","/topic/TTEST1"])        
+
+            time.sleep(2)
 
             for i in range(0,10):
                 conn1.send_message("/queue/QTEST2","TEST_TOCLIENT2")

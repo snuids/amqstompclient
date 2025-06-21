@@ -6,8 +6,10 @@ import datetime
 import time
 import os
 
+import stomp.utils
+
 logger = logging.getLogger(__name__)
-amqclientversion = "1.2.0"
+amqclientversion = "2.0.0"
 
 
 ##################################################################################
@@ -15,6 +17,29 @@ amqclientversion = "1.2.0"
 ##################################################################################
 
 class AMQListener(stomp.ConnectionListener):
+    """
+    AMQListener is a listener class for handling STOMP protocol events in a message queue client.
+
+    Args:
+        amqconn: The AMQ connection object, used for acknowledging messages and handling errors.
+        callback: A callable to process received messages. It should accept (destination, message, headers).
+
+    Attributes:
+        internal_conn: Reference to the AMQ connection object.
+        callback: The message processing callback function.
+        globalerrors: Counter for global errors encountered.
+        errors: Counter for errors received via the on_error handler.
+        globalmessages: Counter for total messages received.
+        received: Dictionary tracking the number of messages received per destination.
+
+    Methods:
+        on_error(frame):
+            Handles error frames received from the STOMP server. Logs the error, increments error counters, and notifies the connection.
+        on_heartbeat_timeout():
+            Handles heartbeat timeout events. Logs a warning and notifies the connection.
+        on_message(frame):
+            Handles incoming messages. Optionally acknowledges early, logs and tracks message statistics, invokes the callback, handles exceptions, and acknowledges the message if not early ack.
+    """
 
     def __init__(self, amqconn,  callback):
         self.internal_conn = amqconn
@@ -24,16 +49,18 @@ class AMQListener(stomp.ConnectionListener):
         self.globalmessages = 0
         self.received = {}
 
-    def on_error(self, headers, body):
-        logger.error('#=- Received an error "%s"' % body)
+    def on_error(self,  frame:stomp.utils.Frame):
+        logger.error('#=- Received an error "%s"' % frame)
         self.errors += 1
         self.internal_conn.general_error()
 
     def on_heartbeat_timeout(self):
-        logger.warn("#=- HEART BEAT TIMEOUT ERROR")
+        logger.warning("#=- HEART BEAT TIMEOUT ERROR")
         self.internal_conn.heartbeat_timeout()
 
-    def on_message(self, headers, message):
+    def on_message(self,  frame:stomp.utils.Frame):
+        headers = frame.headers
+        message = frame.body
         if self.internal_conn.earlyack:
             logger.debug("Early ack")
             self.internal_conn.conn.ack(
@@ -42,8 +69,7 @@ class AMQListener(stomp.ConnectionListener):
         destination = "NA"
         if("destination" in headers):
             destination = headers["destination"]
-        logger.debug("#=->>>> Message received (" + destination +
-                     ") PAYLOAD=" + str(len(message)))
+        logger.debug("#=->>>> Message received (%s) PAYLOAD=%d", destination, len(message))
 
         if destination not in self.received:
             self.received[destination] = 1
@@ -53,18 +79,18 @@ class AMQListener(stomp.ConnectionListener):
         self.globalmessages += 1
 
         try:
-            if self.callback != None:
+            if self.callback is not None:
                 self.callback(destination, message, headers)
             else:
                 logger.warning("#=- No call back defined")
 
-        except Exception:
+        except Exception as e:
             self.globalerrors += 1
 
-            logger.error("ERROR:", exc_info=True)
+            logger.error(f"ERROR:{e}", exc_info=True)
             err = sys.exc_info()
             errstr = str(err[0]) + str(err[1]) + str(err[2])
-            logger.error("ERROR:" + errstr)
+            logger.error(f"ERROR:{errstr}" )
 
         if not self.internal_conn.earlyack:
             self.internal_conn.conn.ack(
@@ -72,33 +98,58 @@ class AMQListener(stomp.ConnectionListener):
         logger.debug("#=-<<<< Message handled")
 
 
-##################################################################################
-# AMQ Listener which gracefully reconnects on disconnect
-##################################################################################
-
-class AMQReconnectListener(AMQListener):
-
-    def on_disconnected(self):
-        logger.warn("#=- LISTENER DISCONNECTED ERROR")
-        self.internal_conn.listener_disconnect()
-
-
 class AMQClient():
+    """
+    AMQClient is a client for connecting to an AMQ (ActiveMQ) server using the STOMP protocol.
+    This class manages the connection lifecycle, subscriptions, message sending, and heartbeat monitoring.
+    It supports automatic reconnection, error handling, and sending periodic life sign messages.
+    Args:
+        server (dict): Server connection parameters (ip, port, login, password, etc.).
+        module (dict): Module information (name, version, lifesign queue, etc.).
+        subscription (list): List of subscription destinations (queues/topics).
+        callback (callable, optional): Callback function for message handling.
+        heart_beat_receive_scale (float, optional): Heartbeat receive scale factor. Default is 2.0.
+        listener_class (type, optional): Listener class to handle incoming messages. Default is AMQListener.
+    Attributes:
+        starttime (datetime): Timestamp when the client was started.
+        heart_beat_receive_scale (float): Heartbeat receive scale factor.
+        listener_class (type): Listener class used for message handling.
+        conn (stomp.Connection): STOMP connection object.
+        sent (dict): Counter of sent messages per destination.
+        subscription (list): List of subscription destinations.
+        callback (callable): Callback function for message handling.
+        server (dict): Server connection parameters.
+        module (dict): Module information.
+        heartbeaterrors (int): Number of heartbeat errors encountered.
+        connections (int): Number of connection attempts.
+        earlyack (bool): Whether early acknowledgment is enabled.
+        listener (AMQListener): Listener instance for handling messages.
+    Methods:
+        disconnect(): Disconnects from the AMQ server.
+        create_connection(): Establishes a new connection and subscribes to destinations.
+        send_life_sign(variables=None): Sends a life sign message to the configured queue.
+        generate_life_sign(): Generates a dictionary with life sign information.
+        send_message(destination, message, headers=None): Sends a message to a destination.
+        heartbeat_timeout(): Handles heartbeat timeout events and triggers reconnection.
+        general_error(): Handles unrecoverable errors and exits the process.
+        listener_disconnect(): Handles listener disconnect events and triggers reconnection.
+        reconnect_and_listen(): Attempts to reconnect to the server with retries.
+    """
 
     def __init__(self, server, module, subscription, callback=None,heart_beat_receive_scale=2.0,
                  listener_class=AMQListener):
         
         logger.debug("#=-" * 20)
-        logger.debug("#=- Starting AMQ Connection" + amqclientversion)
+        logger.debug("#=- Starting AMQ Connection%s", amqclientversion)
         logger.debug("#=-" * 20)
-        logger.debug("#=- Module       :" + module["name"])
-        logger.debug("#=- IP           :" + server["ip"])
-        logger.debug("#=- Port         :" + str(server["port"]))
-        logger.debug("#=- Login        :" + server["login"])
-        logger.debug("#=- Password     :" + ("*" * len(server["password"])))
-        logger.debug("#=- Subscription :" + str(subscription))
-        logger.debug("#=- Beat         :" + str(heart_beat_receive_scale))
-        logger.debug("#=- Listener     :" + str(listener_class))
+        logger.debug("#=- Module       :%s", module["name"])
+        logger.debug("#=- IP           :%s", server["ip"])
+        logger.debug("#=- Port         :%s", server["port"])
+        logger.debug("#=- Login        :%s", server["login"])
+        logger.debug("#=- Password     :%s", "*" * len(server["password"]))
+        logger.debug("#=- Subscription :%s", subscription)
+        logger.debug("#=- Beat         :%s", heart_beat_receive_scale)
+        logger.debug("#=- Listener     :%s", listener_class)
         
         self.starttime = datetime.datetime.now()
         self.heart_beat_receive_scale=heart_beat_receive_scale
@@ -118,14 +169,11 @@ class AMQClient():
             logger.info("Early ack set to true.")
             self.earlyack=server["earlyack"]
 
-        logger.debug("#=- Subscription :" + str(subscription))
-        logger.debug("#=- Early Ack    :" + str(self.earlyack))
+        logger.debug("#=- Subscription :%s", subscription)
+        logger.debug("#=- Early Ack    :%s", self.earlyack)
         logger.debug("#=-" * 20)
-
-        try:
-            self.create_connection(self)
-        except:
-            self.create_connection()
+        
+        self.create_connection()
 
     def disconnect(self):
         logger.info("#=- Disconnecting...")
@@ -159,6 +207,7 @@ class AMQClient():
             for sub in self.subscription:
                 if len(sub) > 0:
                     logger.debug("#=- Subscribing to:" + sub)
+                    
                     self.conn.subscribe(destination=sub, id=curid, ack='client', headers={
                                         "activemq.prefetchSize": 1})
                     curid += 1
@@ -228,10 +277,7 @@ class AMQClient():
                 logger.error("#=- Unable to disconnect.")
             logger.info("Sleeping 5 seconds and reconnects.")
             time.sleep(5)
-            try:
-                self.create_connection(self)
-            except:
-                self.create_connection()
+            self.create_connection()
 
     def heartbeat_timeout(self):
         self.heartbeaterrors += 1
@@ -250,10 +296,7 @@ class AMQClient():
             try:
                 logger.debug("#=- Reconnecting: Attempt %d" % n)
                 time.sleep(5)
-                try:
-                    self.create_connection(self)
-                except:
-                    self.create_connection()
+                self.create_connection()
 
                 break
             except Exception as e:

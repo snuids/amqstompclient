@@ -101,3 +101,4 @@ ENV/
 .mypy_cache/
 .pypirc
 .vscode/settings.json
+amqstompclient/test_amqstompclient copy.py

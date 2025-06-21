@@ -1,6 +1,7 @@
 # amqstompclient
 
 A stomp client in python3 for ActiveMQ using the stomp.py library. The client reconnects automatically when ActiveMQ misses heartbeats.
+As of version 2.0 it is linked against stomp.py 8
 
 ## Example 1:
 ```python
